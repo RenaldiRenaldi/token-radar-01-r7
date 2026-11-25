@@ -27,14 +27,14 @@ The production model uses the positive-cap records with a CoinGecko ID. All 119 
 
 | Listing cohort | Train / validation | Protocols in test | Median cap miss | Within 3× |
 | --- | ---: | ---: | ---: | ---: |
-| 2023 | 3 / 12 | 85 | ×2.71 | 9/18 |
-| 2024 | 19 / 16 | 150 | ×2.58 | 9/18 |
-| 2025 | 37 / 18 | 180 | ×2.56 | 12/21 |
+| 2023 | transfer cohort | 18 | ×3.119 | 9/18 |
+| 2024 | transfer cohort | 18 | ×1.995 | 12/18 |
+| 2025 | transfer cohort | 21 | ×2.441 | 12/21 |
 | 2026 | transfer-test | 9 | ×6.350 | 3/9 |
 
 This is a listing-cohort transfer test on current caps and current features. A 30-day gap precedes each validation and test boundary. Training excludes validation token IDs, and both earlier sets exclude test token IDs. For the sparse 2023 training window, a pooled size fit is preselected, then refitted after pooling training and validation. There are 558 cohort predictions, with 66 observed anchor caps for error scoring. The ledger records 113 missing listing dates and 87 dates outside the test windows. Historical observations would be required to measure real walk-forward forecast error.
 
-The model runs 256 fixed-seed token-block bootstrap refits of the selected specification. Sentora Curator spans ranks 1–6 with central 80% ranks 1–3. Steakhouse Financial spans 1–8 with central ranks 1–4. Gauntlet spans 2–24 with central ranks 3–9. Bootstrap ranges measure model stability. Separate signed residual bands show the central 80% of held-out log errors around each point estimate.
+The model runs 256 fixed-seed token-block bootstrap refits of the selected specification. Sentora Curator spans ranks 1–23 with central 80% ranks 1–7. Steakhouse Financial spans ranks 1–21 with central ranks 1–8. Veda spans ranks 1–33 with central ranks 1–6. Gauntlet spans ranks 3–53 with central ranks 3–20. Bootstrap ranges measure model stability. Separate signed residual bands show the central 80% of held-out log errors around each point estimate.
 
 Stability belongs to ranks among today's 198 launch candidates. In a bootstrap draw, comparable tokens are resampled as blocks and candidate ordering is recalculated. It is not a posterior probability that a rank is correct.
 
@@ -42,7 +42,7 @@ Stability belongs to ranks among today's 198 launch candidates. In a bootstrap d
 
 The board ranks 198 launch candidates with all 40 watchlist rows. The universe ledger gives fitted diagnostics, provenance and a cost curve to all 758 protocols, including 119 anchors and 441 quarantined records. Those 560 rows have a skip route and no modeled pre-launch proceeds.
 
-The default scenario uses a 30-day deposit, a 25% joint chance of a qualifying distribution, and a hypothetical 10% pro rata depositor allocation. The assumed share is ticket divided by TVL plus ticket. Subtract four chain-priced transactions, 0.30% total slippage and 4% annual carry. The least expensive listed chain is selected under assumed fees of $0.05 per transaction on Solana, $0.30 on the listed lower-cost networks, $12 on Ethereum and $1 elsewhere. Verify deployment and supported assets before using a route. Model costs exclude asset losses, bridge fees and product charges. The portfolio view adds shared no-distribution, exit-cost and principal-loss scenarios.
+The default scenario uses each protocol's peer-derived qualifying odds and a hypothetical 10% pro rata depositor allocation. The assumed share is ticket divided by TVL plus ticket. Subtract four chain-priced transactions, 0.30% total slippage and 4% annual carry. The least expensive listed chain is selected under assumed fees of $0.05 per transaction on Solana, $0.30 on the listed lower-cost networks, $12 on Ethereum and $1 elsewhere. Verify deployment and supported assets before using a route. Model costs exclude asset losses, bridge fees and product charges. The portfolio view keeps its user-adjustable probability control and adds shared no-distribution, exit-cost and principal-loss scenarios.
 
 Run with Node 22 and the sealed input directory:
 
@@ -50,4 +50,4 @@ Run with Node 22 and the sealed input directory:
 node main.ts --input /path/to/kit/input --output /tmp/soundings
 ```
 
-Open `/tmp/soundings/dashboard/index.html` offline. The ranked book, full ledger and fold log are downloadable from the page. Board and validation captures are committed assets under `captures/`, and the graded entry reads them directly.
+Open `/tmp/soundings/dashboard/index.html` offline. The ranked book, full ledger and fold log are downloadable from the page. Board and validation captures are committed assets under `captures/`, and the graded entry reads them directly. This R7 artifact records the final measured diagnostics in `validation.json`.

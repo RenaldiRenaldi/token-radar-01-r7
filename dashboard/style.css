@@ -12,6 +12,7 @@
   --mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
   font: 14px/1.42 Inter, 'Segoe UI', system-ui, sans-serif;
 }
+/* R7 final pass keeps the terminal dense and readable. */
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 body { margin: 0; background: var(--base); color: var(--text); }
@@ -46,6 +47,7 @@ h3 { font-size: 14px; margin: 0 0 5px; }
 .metric strong { color: var(--jade); font: 23px var(--mono); display: block; margin-bottom: 2px; }
 .farm-cover { padding: 8px 13px; margin-bottom: 10px; border: 1px solid #315b4b; background: #142a25; color: var(--muted); font: 12px/1.45 var(--mono); }
 .farm-cover strong { color: var(--jade); }
+.formula { padding: 9px 13px; margin-bottom: 10px; border: 1px solid var(--line); background: var(--raised); color: var(--jade); font: 12px/1.4 var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .integrity { display: flex; flex-wrap: wrap; align-items: baseline; gap: 7px 15px; padding: 10px 13px; margin-bottom: 10px; border: 1px solid var(--line); border-left: 3px solid var(--jade); background: var(--panel); color: var(--muted); font: 11px/1.5 var(--mono); }
 .integrity strong, .integrity .farm-kpi { color: var(--jade); }
 .integrity em { color: var(--amber); font-style: normal; }
@@ -94,6 +96,11 @@ ol li + li { margin-top: 7px; }
 .extraGrid table th, .extraGrid table td { text-align: left; }
 .settings { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin-bottom: 12px; }
 footer { border-top: 1px solid var(--line); display: flex; justify-content: space-between; margin-top: 12px; padding: 10px 0; color: var(--muted); }
+.scatter { width: 100%; height: 250px; background: #0d171c; border: 1px solid var(--line); }
+.scatter .anchor { fill: var(--amber); opacity: .75; }
+.scatter .candidate { fill: var(--jade); opacity: .55; }
+.scatter .curve { fill: none; stroke: #f08f5b; stroke-width: 2; }
+.scatter text { fill: var(--muted); font: 10px var(--mono); }
 @media(max-width:1120px) {
   .workspace { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
   .audit { grid-column: 1/-1; }

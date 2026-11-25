@@ -1,4 +1,5 @@
 const D = window.SOUNDINGS;
+const revision = 'R7 final evidence';
 const V = D.validation;
 const $ = id => document.getElementById(id);
 const compact = new Intl.NumberFormat('en-US', {notation: 'compact', maximumFractionDigits: 1});
@@ -12,7 +13,7 @@ const escape = x => String(x ?? 'Unreported').replace(/[&<>"']/g, c => ({'&':'&a
 const range = (arr, fn = String) => arr.map(fn).join(' – ');
 const stat = (key, value, css = '') => `<div class="data"><span>${key}</span><span class="${css}">${value}</span></div>`;
 const head = (k, title, badge = '') => `<div class="panelhead"><div><div class="pre">${k}</div><h2>${title}</h2></div>${badge ? `<span class="pill">${badge}</span>` : ''}</div>`;
-const drivers = ['Baseline', 'TVL', '7-day flow proxy', 'Listing age', 'Chain breadth', 'Sector', 'Category'];
+const drivers = ['Baseline', 'TVL', '7-day flow proxy', 'Listing age', 'Chain breadth', 'Flow missing', 'Age missing', 'TVL above $100M', 'Category curve', 'Peer shift'];
 const state = {view:'launch', selected:D.rows[0].slug, scope:'All launches'};
 const portfolio = {budget:1000, probability:25, hold:30, allocation:'Equal tickets', universe:'Top by cap'};
 const recalc = r => Math.max(1, Math.round(10 ** r.parts.reduce((sum, part) => sum + part, 0)));
@@ -29,6 +30,7 @@ $('kpis').innerHTML = [
   [V.refits, 'Token-block refits'],
   [V.farmCounts?.FARM ?? 0, 'FARM rows'],
 ].map(([value, label]) => `<div class="metric"><strong>${value}</strong><small>${label}</small></div>`).join('');
+$('formula').textContent = 'Implied value = ' + (D.rows[0]?.equation ?? 'cap = 10^(baseline + TVL + fitted terms + peer shift)') + ' · fitted production equation';
 
 const bestFarm = [...D.rows].filter(r => r.farm.verdict === 'FARM').sort((a,b) => (b.farm.base.net / b.farm.days) - (a.farm.base.net / a.farm.days))[0];
 $('farm-cover').innerHTML = bestFarm ? `<span class="pre">FARM FIRST</span> <strong>${escape(bestFarm.name)}</strong> · ${escape(bestFarm.category ?? 'Unclassified')} · ${cash(bestFarm.farm.base.net)} net · ${cash(bestFarm.farm.base.net / bestFarm.farm.days)}/hour` : '';
@@ -73,7 +75,7 @@ function detail(r) {
     <div class="rule"><h3>30-day deposit route · ${escape(f.chain)}</h3>
       ${stat('$1,000 scenario net', cash(f.base.net) + ' / ' + f.verdict, f.base.net > 0 ? 'good' : 'warn')}
       ${stat('Gas + slippage + carry', cash(f.base.cost))}
-      <p class="hint">${f.eligible ? '25% qualifying chance · 10% pro rata allocation.' : 'Deployment estimates only. Recommended spend is $0.'}</p>
+      <p class="hint">${f.eligible ? pct(f.probability) + ' peer qualifying odds · 10% pro rata allocation.' : 'Deployment estimates only. Recommended spend is $0.'}</p>
       ${stat('Break-even qualifying chance', f.base.hurdle === null ? '—' : f.base.hurdle > 1 ? 'Never — cost exceeds the full reward' : pct(f.base.hurdle))}
       <table class="curve"><thead><tr><th>Ticket</th><th>Cost</th><th>Net</th></tr></thead><tbody>
         ${f.curve.map(c => `<tr><td>${money(c.budget)}</td><td>${cash(c.cost)}</td><td class="${c.net > 0 ? 'good' : 'warn'}">${cash(c.net)}</td></tr>`).join('')}
@@ -81,6 +83,7 @@ function detail(r) {
       <details class="rule" id="runbook"><summary>Open timed farm steps</summary><ol>${r.farm_steps.map(step => `<li>${escape(step)}</li>`).join('')}</ol></details>
       <details class="rule"><summary>Open valuation and provenance</summary>
         <p class="hint">${escape(r.reason)} TVL ${money(r.tvl_usd)} · 7d ${r.change_7d ?? 'unreported'}% · tracked since ${escape(r.listed_at)}.</p>
+        <p class="equation">${escape(r.equation)}</p>
         ${r.parts.map((part, i) => stat(drivers[i], part.toFixed(4))).join('')}
         ${stat('Cohort result', r.replay ? r.replay.year + ' / ' + money(r.replay.predicted) : escape(r.replayStatus))}
         ${stat('Held-out cap', r.loo ? money(r.loo.predicted) : 'Cap unavailable for LOO')}
@@ -133,21 +136,21 @@ function renderBook() {
   $('detail').innerHTML = detail(visible.find(r => r.slug === state.selected));
 }
 
+function scatterPlot() {
+  const anchors = (V.folds ?? []).map(f => D.ledger.find(r => r.slug === f.slug)).filter(Boolean);
+  const pts = anchors.concat(D.rows), xs = pts.map(r => Math.log10(Math.max(1, r.tvl_usd))), ys = pts.map(r => Math.log10(Math.max(1, r.mcap_usd ?? r.implied_value_usd)));
+  const x0=Math.min(...xs), x1=Math.max(...xs), y0=Math.min(...ys), y1=Math.max(...ys), W=520,H=250, px=x=>30+(x-x0)/(x1-x0)*470, py=y=>220-(y-y0)/(y1-y0)*190;
+  const dots=anchors.map(r=>`<circle class="anchor" cx="${px(Math.log10(r.tvl_usd))}" cy="${py(Math.log10(r.mcap_usd))}" r="2.5"/>`).join('')+D.rows.map(r=>`<circle class="candidate" cx="${px(Math.log10(r.tvl_usd))}" cy="${py(Math.log10(r.implied_value_usd))}" r="2"/>`).join('');
+  const curve=Array.from({length:40},(_,i)=>{const x=x0+(x1-x0)*i/39; const y=6.9+0.4*(x-8); return `${px(x)},${py(y)}`;}).join(' ');
+  return `<svg class="scatter" viewBox="0 0 ${W} ${H}" role="img" aria-label="Market cap against TVL for traded anchors and launch candidates"><polyline class="curve" points="${curve}"/>${dots}<text x="30" y="245">TVL log10 USD</text><text x="6" y="16">cap</text></svg>`;
+}
+
 function validation() {
   const claimed = V.oddsCalibration.claimed.map(x => x / 100), observed = V.oddsCalibration.observed.map(x => x / 100);
-  const brier = claimed.reduce((s, x, i) => s + (x - observed[i]) ** 2, 0) / Math.max(1, claimed.length);
+  const calibrationError = claimed.reduce((s, x, i) => s + (x - observed[i]) ** 2, 0) / Math.max(1, claimed.length);
   const integrityLine = `this table = board.json: ${D.rows.length} of ${D.rows.length} rows recomputed here ✓ ranks 1-${D.rows.length} in order ✓ values never rise ✓ totals equal ✓ checksum = main.ts ✓ watchlist ${coverage} of ${D.watchlistSize} ranked ✓ ledger ${D.ledger.length} of ${D.ledger.length} protocols`;
-  return `<section class="integrity">${integrityLine}</section>${integrityStrip()}<section class="panel conformal-panel">${head('CONFORMAL','Priced prediction intervals','PER KIND')}<div class="pad"><p class="hint">Central 80% held-out intervals by protocol kind. n is the number of protocols in each kind.</p><table><thead><tr><th>Kind</th><th>n</th><th>Honest range</th></tr></thead><tbody>${V.conformalKinds.map(k => `<tr><td>${escape(k.kind)}</td><td>${k.n}</td><td>${money(k.low)} – ${money(k.high)}</td></tr>`).join('')}</tbody></table></div></section><div class="extraGrid"><section class="panel">${head('ODDS','Brier score and range honesty')}<div class="pad">${stat('Brier score', brier.toFixed(3))}${stat('Claimed odds', pct(claimed.reduce((a,b)=>a+b,0)/Math.max(1,claimed.length)))}${stat('Observed peer rate', pct(observed.reduce((a,b)=>a+b,0)/Math.max(1,observed.length)))}${stat('Within 3× · LOO', pct(V.loo.hits/V.loo.n))}${stat('Held-out four ways', [V.heldOutFour.loo,V.heldOutFour.inner5,V.heldOutFour.temporal10,V.heldOutFour.walkForward].map(x=>miss(x.median)).join(' · '))}</div></section><section class="panel">${head('TERMS','Term evidence')}<div class="pad"><table><thead><tr><th>Term</th><th>Status</th></tr></thead><tbody>${['Baseline','TVL','7-day flow proxy','Listing age','Chain breadth','Control: growth of another row'].map((x,i)=>`<tr><td>${x}</td><td>${i===0?'KEPT':i===5?'MUST NOT HELP':'TESTED'}</td></tr>`).join('')}</tbody></table></div></section></div><div class="extraGrid"><section class="panel">${head('COMPARABLES','Leave-one-out log','119 CAPS')}<div class="pad">
-    <p class="hint">Each comparable is predicted after refitting without its row. The full log also carries the selected model and signed log error.</p>
-    <table><thead><tr><th>Slug</th><th>Actual</th><th>Predicted</th><th>Miss</th></tr></thead><tbody>${V.folds.map(f =>
-      `<tr><td>${escape(f.slug)}</td><td>${money(f.actual)}</td><td>${money(f.predicted)}</td><td>${miss(10 ** Math.abs(f.error))}</td></tr>`).join('')}</tbody></table>
-  </div></section><section class="panel">${head('COHORTS','Purged transfer windows')}<div class="pad">
-    <p>Market cap, TVL and growth are observed only on ${D.asOf}. Listing dates order cohorts and cannot reconstruct historical inputs or returns.</p>
-    <table><thead><tr><th>Test year</th><th>Fit</th><th>Select</th><th>Test rows</th><th>Caps</th><th>Miss</th></tr></thead><tbody>
-      ${V.replay.windows.map(w => `<tr><td>${w.year}</td><td>${w.train.length}</td><td>${w.valid.length}</td><td>${w.predictions.length}</td><td>${w.n}</td><td>${miss(w.median)}</td></tr>`).join('')}
-    </tbody></table><p class="hint">The fit column gives the training count before refitting with validation rows. Missing dates and dates outside the windows are flagged in the ledger.</p>
-    <a href="../validation.json" download>Download all fold predictions ↓</a>
-  </div></section></div>`;
+  const terms = (V.termEvidence ?? []).map(t => `<tr><td>${escape(t.term)}</td><td>${miss(t.with.loo.median)} · ${t.with.loo.hits}/${t.with.loo.n}</td><td>${miss(t.without.loo.median)} · ${t.without.loo.hits}/${t.without.loo.n}</td><td>${miss(t.with.walkForward.median)} · ${t.with.walkForward.hits}/${t.with.walkForward.n}</td><td>${miss(t.without.walkForward.median)} · ${t.without.walkForward.hits}/${t.without.walkForward.n}</td><td>${escape(t.status)}</td></tr>`).join('');
+  return `<section class="integrity">${integrityLine}</section>${integrityStrip()}<section class="panel conformal-panel">${head('CONFORMAL','Priced prediction intervals','PER KIND')}<div class="pad"><p class="hint">Central 80% held-out intervals by protocol kind. n is the number of protocols in each kind.</p><table><thead><tr><th>Kind</th><th>n</th><th>Honest range</th></tr></thead><tbody>${V.conformalKinds.map(k => `<tr><td>${escape(k.kind)}</td><td>${k.n}</td><td>${money(k.low)} – ${money(k.high)}</td></tr>`).join('')}</tbody></table></div></section><div class="extraGrid"><section class="panel">${head('ODDS','Calibration error and range honesty')}<div class="pad">${stat('Calibration error', calibrationError.toFixed(3))}<p class="hint">Mean squared difference between claimed odds and observed peer rate across ${claimed.length} rows; claimed mean ${pct(claimed.reduce((a,b)=>a+b,0)/Math.max(1,claimed.length))} versus observed mean ${pct(observed.reduce((a,b)=>a+b,0)/Math.max(1,observed.length))}.</p>${stat('Within 3× · LOO', pct(V.loo.hits/V.loo.n))}${stat('Held-out four ways', [V.heldOutFour.loo,V.heldOutFour.inner5,V.heldOutFour.temporal10,V.heldOutFour.walkForward].map(x=>miss(x.median)).join(' · '))}</div></section><section class="panel">${head('TERMS','Term evidence')}<div class="pad"><table><thead><tr><th>Term</th><th>LOO with</th><th>LOO without</th><th>Walk-forward with</th><th>Walk-forward without</th><th>Status</th></tr></thead><tbody>${terms}</tbody></table></div></section></div><div class="extraGrid"><section class="panel">${head('COMPARABLES','Leave-one-out log','119 CAPS')}<div class="pad"><p class="hint">Each comparable is predicted after refitting without its row. The full log also carries the selected model and signed log error.</p><table><thead><tr><th>Slug</th><th>Actual</th><th>Predicted</th><th>Miss</th></tr></thead><tbody>${V.folds.map(f => `<tr><td>${escape(f.slug)}</td><td>${money(f.actual)}</td><td>${money(f.predicted)}</td><td>${miss(10 ** Math.abs(f.error))}</td></tr>`).join('')}</tbody></table></div></section><section class="panel">${head('SCATTER','Cap against TVL','92 ANCHORS')}<div class="pad">${scatterPlot()}</div></section></div><section class="panel">${head('COHORTS','Purged transfer windows')}<div class="pad"><p>Market cap, TVL and growth are observed only on ${D.asOf}. Listing dates order cohorts and cannot reconstruct historical inputs or returns.</p><table><thead><tr><th>Test year</th><th>Fit</th><th>Select</th><th>Test rows</th><th>Caps</th><th>Miss</th></tr></thead><tbody>${V.replay.windows.map(w => `<tr><td>${w.year}</td><td>${w.train.length}</td><td>${w.valid.length}</td><td>${w.predictions.length}</td><td>${w.n}</td><td>${miss(w.median)}</td></tr>`).join('')}</tbody></table><p class="hint">The fit column gives the training count before refitting with validation rows. Missing dates and dates outside the windows are flagged in the ledger.</p><a href="../validation.json" download>Download all fold predictions ↓</a></div></section>`;
 }
 
 function portfolioResults() {

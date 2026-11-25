@@ -10,6 +10,7 @@ function flag(name: string, fallback: string) {
 }
 
 const root = fileURLToPath(new URL('.', import.meta.url));
+const revision = 'R7 final evidence';
 const input = flag('input', '/input');
 const output = flag('output', process.env.MAKEFUN_OUTPUT_DIR ?? '/output');
 const data = build(JSON.parse(readFileSync(input.endsWith('.json') ? input : join(input, 'snapshot.json'), 'utf8')));

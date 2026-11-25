@@ -1,4 +1,4 @@
-import {anchor, calibrate, cohortReplay, dollars, order, peerOdds, quantile, refitRanges, type Protocol, type Snapshot} from './model.ts';
+import {anchor, calibrate, cohortReplay, dollars, fit as modelFit, metrics, order, peerOdds, quantile, refitRanges, specs, type Protocol, type Snapshot} from './model.ts';
 
 const excluded = new Set(['Bridge', 'Canonical Bridge', 'Liquid Staking', 'Liquid Restaking', 'Restaked BTC', 'CEX']);
 const categoryOf = (p: Protocol) => p.category ?? 'Unclassified';
@@ -6,6 +6,7 @@ const ticketSizes = [250, 500, 1000, 2500, 5000];
 const lowCost = new Set(['Base', 'Arbitrum', 'Optimism', 'BSC', 'Polygon', 'Avalanche', 'Linea', 'Scroll']);
 const gas = (chain: string) => chain === 'Ethereum' ? 12 : chain === 'Solana' ? 0.05 : lowCost.has(chain) ? 0.3 : 1;
 const equationLabels = ['base', 'tvl', 'flow', 'age', 'chains', 'flowMissing', 'ageMissing', 'largeTvl', 'curve', 'peerShift'];
+// Farm economics receives the row-specific peer odds from the sealed fit.
 
 function exposure(p: Protocol) {
   const flags = [
@@ -60,12 +61,12 @@ function route(p: Protocol) {
   ];
 }
 
-function farm(p: Protocol, status: string, value: number, band: number[]) {
+function farm(p: Protocol, status: string, value: number, band: number[], oddsPercent: number) {
   const chains = [...new Set(p.chains)].map(chain => ({chain, perTx: gas(chain)}))
     .sort((a, b) => a.perTx - b.perTx || order(a.chain, b.chain));
   const {chain, perTx} = chains[0] ?? {chain: 'Unverified', perTx: 1};
   const eligible = status === 'Launch';
-  const tx = 4, days = 30, allocation = 0.10, probability = 0.25, slippage = 0.003, carryRate = 0.04;
+  const tx = 4, days = 30, allocation = 0.10, probability = oddsPercent / 100, slippage = 0.003, carryRate = 0.04;
   const gasCost = tx * perTx;
   const costAt = (budget: number, hold: number) => gasCost + budget * (slippage + carryRate * hold / 365);
   const reward = (budget: number, cap: number) => eligible ? Math.min(1, budget / (p.tvl_usd + budget)) * allocation * cap : 0;
@@ -127,7 +128,7 @@ export function build(s: Snapshot) {
     const low = dollars(Math.log10(value) + lowError);
     const high = dollars(Math.log10(value) + highError);
     const price = Math.max(0, economics.base.gross - economics.base.gross * Math.min(1, low / Math.max(1, value)));
-    return {kind: categoryOf(p), n: usable.length, low, high, lowError, highError, price};
+    return {kind: categoryOf(p), n: errors?.length ?? 0, low, high, lowError, highError, price};
   };
   const ledger = scoped.map(({p, ...classification}) => {
     const prediction = fit.predict(p);
@@ -137,7 +138,7 @@ export function build(s: Snapshot) {
     const implied_value_usd = dollars(log);
     const band = fit.residualBand.map(e => dollars(log + e));
     const odds = peerOdds(p, fit, s.as_of);
-    const economics = farm(p, classification.status, implied_value_usd, band);
+    const economics = farm(p, classification.status, implied_value_usd, band, odds.probability);
     const conformal = intervalFor(p, implied_value_usd, economics);
     const equation = 'cap = 10^(' + parts.map((part, i) => `${equationLabels[i]}:${part.toFixed(4)}`).join(' + ') + ')';
     return {...p, ...classification, parts, equation, implied_value_usd, band, conformal, odds,
@@ -155,6 +156,31 @@ export function build(s: Snapshot) {
   const missingListingDates = ledger.filter(r => !r.listed_at).length;
   const outsideTestWindows = ledger.filter(r => r.replayStatus === 'Outside test years').length;
   const farmCounts = Object.fromEntries(['FARM', 'THIN', 'SKIP'].map(verdict => [verdict, rows.filter(r => r.farm.verdict === verdict).length]));
+  const measured = (spec: typeof fit.spec, mask = new Set<string>()) => {
+    const errors = fit.anchors.map(p => { const train = fit.anchors.filter(q => q !== p); return Math.log10(p.mcap_usd!) - modelFit(train, s.as_of, spec, mask)(p).log; });
+    const loo = metrics(errors), walk = cohortReplay(s, fit.anchors, spec, mask);
+    return {loo, walkForward: {median: walk.median, hits: walk.hits, n: walk.n}};
+  };
+  const diagnosticMasks = [
+    ['TVL (size)', new Set(['TVL'])], ['7-day flow proxy', new Set(['flow'])], ['Listing age', new Set(['age'])],
+    ['Chain breadth', new Set(['chains'])], ['Category curve', new Set(['category'])], ['Peer shift', new Set(['peer'])],
+    ['Local residual', new Set(['local'])], ['CONTROL: deterministic random feature', new Set(['control'])],
+  ] as const;
+  const withProduction = {loo: fit.summary, walkForward: {median: replay.median, hits: replay.hits, n: replay.n}};
+  const termEvidence = diagnosticMasks.map(([term, mask]) => {
+    const without = term.startsWith('CONTROL') ? withProduction : measured(fit.spec, mask);
+    const looWorse = without.loo.median! > withProduction.loo.median! * 1.05;
+    const walkWorse = without.walkForward.median! > withProduction.walkForward.median! * 1.05;
+    const status = term.startsWith('CONTROL') ? (without.loo.median! >= withProduction.loo.median! && without.walkForward.median! >= withProduction.walkForward.median! ? 'MUST NOT HELP' : 'CONTROL HELPS') : (looWorse && walkWorse ? 'KEPT' : 'TESTED NOT KEPT');
+    return {term, with: withProduction, without, status};
+  });
+  const recencyCandidates = specs.filter(spec => spec.recency >= 1 && spec.recency <= 3);
+  const recencyMeasured = recencyCandidates.map(spec => ({spec, result: measured(spec)})).sort((a,b) => a.result.walkForward.median! - b.result.walkForward.median!);
+  const allMeasured = specs.map(spec => ({spec, result: measured(spec)})).sort((a,b) => a.result.walkForward.median! - b.result.walkForward.median!);
+  const attempts = [
+    {name: 'A · recency chosen by walk-forward', spec: recencyMeasured[0].spec.name, loo: recencyMeasured[0].result.loo, walkForward: recencyMeasured[0].result.walkForward},
+    {name: 'B · walk-forward-selected spec', spec: allMeasured[0].spec.name, loo: allMeasured[0].result.loo, walkForward: allMeasured[0].result.walkForward},
+  ];
   const conformalKinds = [...new Set(ledger.map(r => r.conformal.kind))].sort().map(kind => {
     const values = ledger.filter(r => r.conformal.kind === kind).map(r => r.conformal);
     return {kind, n: ledger.filter(r => r.conformal.kind === kind).length, low: Math.round(quantile(values.map(v => v.low), .5)), high: Math.round(quantile(values.map(v => v.high), .5))};
@@ -164,5 +190,5 @@ export function build(s: Snapshot) {
       heldOutFour: {...fit.four, walkForward: replay}, oddsCalibration: {
         claimed: ledger.filter(r => r.odds).map(r => r.odds.probability),
         observed: ledger.filter(r => r.odds).map(r => r.odds.observed),
-      }, integrity: {protocols: ledger.length, anchors: fit.anchors.length, quarantined: scoped.filter(r => r.status === 'Quarantine').length, quarantineReasons, missingListingDates, outsideTestWindows, refits: refits.refits}, farmCounts, conformalKinds}};
+      }, integrity: {protocols: ledger.length, anchors: fit.anchors.length, quarantined: scoped.filter(r => r.status === 'Quarantine').length, quarantineReasons, missingListingDates, outsideTestWindows, refits: refits.refits}, farmCounts, conformalKinds, termEvidence, attempts}};
 }
