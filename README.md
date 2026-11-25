@@ -8,7 +8,7 @@
 
 The terminal ranks 198 records, keeps complete protocol accounting, and exposes rank stability and costed deposit routes alongside held-out tests.
 
-Radar-7 kept the B3 fit and made its evidence readable: LOO median ×2.869 (60/119), walk-forward ×2.495 (36/66), inner five-fold ×3.515 and temporal ten-fold ×3.585. It showed token odds per ranked row, costed farm verdicts (91 FARM, 31 THIN, 76 SKIP), and recomputed the board and ledger in the browser.
+Radar-7 kept the B3 fit and made its evidence readable: LOO median ×2.869 (60/119), walk-forward ×2.495 (36/66), inner five-fold ×3.515 and temporal ten-fold ×3.585. It showed token odds per ranked row, costed farm verdicts (125 FARM, 23 THIN, 50 SKIP), and recomputed the board and ledger in the browser.
 
 The portfolio simulator and liquidity exposure score add decisions the top ten titles do not advertise. The first tests budget allocation under correlated failures and exit shocks. The second reports drawdown, chain concentration and small TVL with explicit missingness. There are no contract controls, holder data, launch dates, social metrics or measured gas quotes in the snapshot.
 
