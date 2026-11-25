@@ -157,7 +157,7 @@ export function build(s: Snapshot) {
   const farmCounts = Object.fromEntries(['FARM', 'THIN', 'SKIP'].map(verdict => [verdict, rows.filter(r => r.farm.verdict === verdict).length]));
   const conformalKinds = [...new Set(ledger.map(r => r.conformal.kind))].sort().map(kind => {
     const values = ledger.filter(r => r.conformal.kind === kind).map(r => r.conformal);
-    return {kind, n: values[0]?.n ?? 0, low: Math.round(quantile(values.map(v => v.low), .5)), high: Math.round(quantile(values.map(v => v.high), .5)), price: Math.round(quantile(values.map(v => v.price), .5) * 100) / 100};
+    return {kind, n: ledger.filter(r => r.conformal.kind === kind).length, low: Math.round(quantile(values.map(v => v.low), .5)), high: Math.round(quantile(values.map(v => v.high), .5))};
   });
   return {rows, ledger, asOf: s.as_of, source: s.source, watchlistSize: watches.size,
     validation: {loo: fit.summary, folds: fit.folds, replay, refits: refits.refits, model: fit.spec.name,

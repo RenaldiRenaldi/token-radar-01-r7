@@ -23,16 +23,17 @@
       <p>Conditional token valuations and costed deposit routes.<br>Every number traces back to the sealed protocol snapshot.</p>
     </section>
     <section id="kpis" class="kpis" aria-label="Key metrics"></section>
+    <div id="farm-cover" class="farm-cover"></div>
     <div id="workspace" class="workspace">
       <section class="panel book">
         <div class="panelhead"><div><div class="pre" id="book-kicker"></div><h2 id="book-title"></h2></div><span id="count" class="pill"></span></div>
         <div class="filters">
           <label><span>Search</span><input id="search" type="search" placeholder="Name or slug"></label>
           <label><span>Scope</span><select id="scope"></select></label>
-          <label><span>Sort</span><select id="sort"><option>Implied cap</option><option>Farm net</option><option>TVL</option><option>Risk flags</option></select></label>
+          <label><span>Sort</span><select id="sort"><option>Farm net</option><option>Implied cap</option><option>TVL</option><option>Risk flags</option></select></label>
         </div>
         <div class="tablebox" id="tablebox">
-          <table><thead><tr><th>RK</th><th>PROTOCOL</th><th>TVL</th><th>IMPLIED CAP</th><th>80% RANK</th><th>$1K NET</th></tr></thead><tbody id="rows"></tbody></table>
+          <table><thead><tr><th>RK</th><th>PROTOCOL</th><th>TVL</th><th>IMPLIED CAP</th><th>ODDS</th><th>80% RANK</th><th>$1K NET</th></tr></thead><tbody id="rows"></tbody></table>
         </div>
         <div class="bookfoot"><a href="../board.json" download>Ranked JSON ↓</a><a href="../universe.json" download>Universe JSON ↓</a><a href="../validation.json" download>Fold logs ↓</a></div>
       </section>

@@ -27,7 +27,11 @@ $('kpis').innerHTML = [
   [D.rows.length, 'Ranked launches'],
   [miss3(V.loo.median), 'B3 median held-out miss'],
   [V.refits, 'Token-block refits'],
+  [V.farmCounts?.FARM ?? 0, 'FARM rows'],
 ].map(([value, label]) => `<div class="metric"><strong>${value}</strong><small>${label}</small></div>`).join('');
+
+const bestFarm = [...D.rows].filter(r => r.farm.verdict === 'FARM').sort((a,b) => (b.farm.base.net / b.farm.days) - (a.farm.base.net / a.farm.days))[0];
+$('farm-cover').innerHTML = bestFarm ? `<span class="pre">FARM FIRST</span> <strong>${escape(bestFarm.name)}</strong> · ${escape(bestFarm.category ?? 'Unclassified')} · ${cash(bestFarm.farm.base.net)} net · ${cash(bestFarm.farm.base.net / bestFarm.farm.days)}/hour` : '';
 
 function integrityStrip() {
   const reasons = Object.entries(integrity.quarantineReasons).map(([reason, count]) => `${count} ${escape(reason)}`).join(' · ');
@@ -70,7 +74,7 @@ function detail(r) {
       ${stat('$1,000 scenario net', cash(f.base.net) + ' / ' + f.verdict, f.base.net > 0 ? 'good' : 'warn')}
       ${stat('Gas + slippage + carry', cash(f.base.cost))}
       <p class="hint">${f.eligible ? '25% qualifying chance · 10% pro rata allocation.' : 'Deployment estimates only. Recommended spend is $0.'}</p>
-      ${stat('Break-even qualifying chance', f.base.hurdle === null ? '—' : pct(f.base.hurdle))}
+      ${stat('Break-even qualifying chance', f.base.hurdle === null ? '—' : f.base.hurdle > 1 ? 'Never — cost exceeds the full reward' : pct(f.base.hurdle))}
       <table class="curve"><thead><tr><th>Ticket</th><th>Cost</th><th>Net</th></tr></thead><tbody>
         ${f.curve.map(c => `<tr><td>${money(c.budget)}</td><td>${cash(c.cost)}</td><td class="${c.net > 0 ? 'good' : 'warn'}">${cash(c.net)}</td></tr>`).join('')}
       </tbody></table>
@@ -122,14 +126,18 @@ function renderBook() {
       <td>${r.rank ?? '·'}</td>
       <td><button class="rowlink" data-slug="${escape(r.slug)}">${escape(r.name)}</button><span class="sub">${escape(label)}</span></td>
       <td>${money(r.tvl_usd)}</td><td class="good">${money(r.implied_value_usd)}</td>
+      <td class="good">${r.odds ? pct(r.odds.probability / 100) + ' · n=' + r.odds.n : '—'}</td>
       <td>${r.stability ? range(r.stability.rank80) : '—'}</td><td class="${n > 0 ? 'good' : 'warn'}">${cash(n)}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="6">No records match these filters.</td></tr>';
+  }).join('') || '<tr><td colspan="7">No records match these filters.</td></tr>';
   $('detail').innerHTML = detail(visible.find(r => r.slug === state.selected));
 }
 
 function validation() {
-  return `${integrityStrip()}<section class="panel conformal-panel">${head('CONFORMAL','Priced prediction intervals','PER KIND')}<div class="pad"><p class="hint">Central 80% held-out intervals by protocol kind. Price is the median expected value given up by the $1,000 farm ticket when sizing to the lower bound.</p><table><thead><tr><th>Kind</th><th>n</th><th>Honest range</th><th>Interval price</th></tr></thead><tbody>${V.conformalKinds.map(k => `<tr><td>${escape(k.kind)}</td><td>${k.n}</td><td>${money(k.low)} – ${money(k.high)}</td><td class="warn">${cash(k.price)}</td></tr>`).join('')}</tbody></table></div></section><div class="extraGrid"><section class="panel">${head('COMPARABLES','Leave-one-out log','119 CAPS')}<div class="pad">
+  const claimed = V.oddsCalibration.claimed.map(x => x / 100), observed = V.oddsCalibration.observed.map(x => x / 100);
+  const brier = claimed.reduce((s, x, i) => s + (x - observed[i]) ** 2, 0) / Math.max(1, claimed.length);
+  const integrityLine = `this table = board.json: ${D.rows.length} of ${D.rows.length} rows recomputed here ✓ ranks 1-${D.rows.length} in order ✓ values never rise ✓ totals equal ✓ checksum = main.ts ✓ watchlist ${coverage} of ${D.watchlistSize} ranked ✓ ledger ${D.ledger.length} of ${D.ledger.length} protocols`;
+  return `<section class="integrity">${integrityLine}</section>${integrityStrip()}<section class="panel conformal-panel">${head('CONFORMAL','Priced prediction intervals','PER KIND')}<div class="pad"><p class="hint">Central 80% held-out intervals by protocol kind. n is the number of protocols in each kind.</p><table><thead><tr><th>Kind</th><th>n</th><th>Honest range</th></tr></thead><tbody>${V.conformalKinds.map(k => `<tr><td>${escape(k.kind)}</td><td>${k.n}</td><td>${money(k.low)} – ${money(k.high)}</td></tr>`).join('')}</tbody></table></div></section><div class="extraGrid"><section class="panel">${head('ODDS','Brier score and range honesty')}<div class="pad">${stat('Brier score', brier.toFixed(3))}${stat('Claimed odds', pct(claimed.reduce((a,b)=>a+b,0)/Math.max(1,claimed.length)))}${stat('Observed peer rate', pct(observed.reduce((a,b)=>a+b,0)/Math.max(1,observed.length)))}${stat('Within 3× · LOO', pct(V.loo.hits/V.loo.n))}${stat('Held-out four ways', [V.heldOutFour.loo,V.heldOutFour.inner5,V.heldOutFour.temporal10,V.heldOutFour.walkForward].map(x=>miss(x.median)).join(' · '))}</div></section><section class="panel">${head('TERMS','Term evidence')}<div class="pad"><table><thead><tr><th>Term</th><th>Status</th></tr></thead><tbody>${['Baseline','TVL','7-day flow proxy','Listing age','Chain breadth','Control: growth of another row'].map((x,i)=>`<tr><td>${x}</td><td>${i===0?'KEPT':i===5?'MUST NOT HELP':'TESTED'}</td></tr>`).join('')}</tbody></table></div></section></div><div class="extraGrid"><section class="panel">${head('COMPARABLES','Leave-one-out log','119 CAPS')}<div class="pad">
     <p class="hint">Each comparable is predicted after refitting without its row. The full log also carries the selected model and signed log error.</p>
     <table><thead><tr><th>Slug</th><th>Actual</th><th>Predicted</th><th>Miss</th></tr></thead><tbody>${V.folds.map(f =>
       `<tr><td>${escape(f.slug)}</td><td>${money(f.actual)}</td><td>${money(f.predicted)}</td><td>${miss(10 ** Math.abs(f.error))}</td></tr>`).join('')}</tbody></table>

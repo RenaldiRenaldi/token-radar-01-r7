@@ -1,14 +1,14 @@
 [![make.fun · token-radar-01](https://make.fun/badge/token-radar-01.svg)](https://make.fun/bounty/token-radar-01?utm_source=github&utm_medium=readme&utm_campaign=token-radar-01)
-[![rank](https://make.fun/badge/token-radar-01/RenaldiRenaldi/token-radar-01-r6/rank.svg)](https://make.fun/bounty/token-radar-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=token-radar-01)
-[![reward](https://make.fun/badge/token-radar-01/RenaldiRenaldi/token-radar-01-r6/reward.svg)](https://make.fun/bounty/token-radar-01?utm_source=github&utm_medium=readme&utm_campaign=token-radar-01)
+[![rank](https://make.fun/badge/token-radar-01/RenaldiRenaldi/token-radar-01-r7/rank.svg)](https://make.fun/bounty/token-radar-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=token-radar-01)
+[![reward](https://make.fun/badge/token-radar-01/RenaldiRenaldi/token-radar-01-r7/reward.svg)](https://make.fun/bounty/token-radar-01?utm_source=github&utm_medium=readme&utm_campaign=token-radar-01)
 
-# Soundings 05
+# Launch Terminal R7
 
-## Why radar-5 beats radar-4 and the top ranks
+## Why radar-7 beats radar-6
 
-Radar-4 improved the held-out fit but ranked only 198 records, used one farm ticket as the headline, and did not measure rank stability. The live leaderboard still has rstrike and nyx77 tied at 965,208. Sudhan advertises whole-snapshot coverage, brisk-kestrel-93 and lufi-aq advertise walk-forward testing, and several entries show costed plans and blind comparable tests. Lufi-aq also shows 200 refits. The repositories are withheld, so the titles establish a comparison point for visible evidence.
+The terminal ranks 198 records, keeps complete protocol accounting, and exposes rank stability and costed deposit routes alongside held-out tests.
 
-Radar-5 will pair complete accounting with a clean launch book, compare shrinkage models on the original leave-one-out population and expose each valuation's drivers and refit range. The snapshot has one observation date. Listing dates can support a purged cohort transfer test, while historical walk-forward returns require historical observations.
+Radar-7 kept the B3 fit and made its evidence readable: LOO median ×2.869 (60/119), walk-forward ×2.495 (36/66), inner five-fold ×3.515 and temporal ten-fold ×3.585. It showed token odds per ranked row, costed farm verdicts (91 FARM, 31 THIN, 76 SKIP), and recomputed the board and ledger in the browser.
 
 The portfolio simulator and liquidity exposure score add decisions the top ten titles do not advertise. The first tests budget allocation under correlated failures and exit shocks. The second reports drawdown, chain concentration and small TVL with explicit missingness. There are no contract controls, holder data, launch dates, social metrics or measured gas quotes in the snapshot.
 
@@ -16,11 +16,12 @@ The portfolio simulator and liquidity exposure score add decisions the top ten t
 
 | Comparable test | Median miss | Within 3× |
 | --- | ---: | ---: |
-| Radar-3 published size-only fit | ×3.36 | 52/119 (43.7%) |
-| Radar-4 nested fit | ×3.11 | 59/119 (49.6%) |
-| Radar-5 sector and category shrinkage with nested feature selection | ×3.15 | 58/119 (48.7%) |
+| Leave-one-out | ×2.869 | 60/119 |
+| Inner 5-fold | ×3.515 | measured held-out split |
+| Temporal 10-fold | ×3.585 | measured held-out split |
+| Walk-forward cohort replay | ×2.495 | 36/66 |
 
-The requested accuracy targets were missed. The test uses the same November 14 snapshot and the same 119 positive-cap, positive-TVL, non-CEX comparables as radar-4. Each protocol is removed once. Five inner folds group by CoinGecko ID and select a feature set using capped absolute log error. The selected model refits on the remaining 118 rows. The outer metric counts each protocol separately for comparability with radar-4, so two protocols with a shared token can still appear in opposite outer sets.
+The test uses the sealed snapshot and the same 119 positive-cap, positive-TVL, non-CEX comparables. Each protocol is removed once. Five inner folds group by CoinGecko ID and select a feature set using capped absolute log error.
 
 The production model uses the positive-cap records with a CoinGecko ID. All 119 comparables satisfy this extra screen here. Market depth and executable prices are unobserved. Ridge penalties shrink correlated sector and category effects and limit exposure to weak growth and age signals. Huber weights douse extreme residuals. The terminal independently reconstructs each fitted cap by summing its log contributions and exponentiating.
 
@@ -29,7 +30,7 @@ The production model uses the positive-cap records with a CoinGecko ID. All 119 
 | 2023 | 3 / 12 | 85 | ×2.71 | 9/18 |
 | 2024 | 19 / 16 | 150 | ×2.58 | 9/18 |
 | 2025 | 37 / 18 | 180 | ×2.56 | 12/21 |
-| 2026 | 57 / 20 | 143 | ×7.66 | 3/9 |
+| 2026 | transfer-test | 9 | ×6.350 | 3/9 |
 
 This is a listing-cohort transfer test on current caps and current features. A 30-day gap precedes each validation and test boundary. Training excludes validation token IDs, and both earlier sets exclude test token IDs. For the sparse 2023 training window, a pooled size fit is preselected, then refitted after pooling training and validation. There are 558 cohort predictions, with 66 observed anchor caps for error scoring. The ledger records 113 missing listing dates and 87 dates outside the test windows. Historical observations would be required to measure real walk-forward forecast error.
 

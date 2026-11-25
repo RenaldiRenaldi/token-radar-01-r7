@@ -44,6 +44,8 @@ h3 { font-size: 14px; margin: 0 0 5px; }
 .metric:last-child { border: 0; }
 .metric small { color: var(--muted); display: block; text-transform: uppercase; }
 .metric strong { color: var(--jade); font: 23px var(--mono); display: block; margin-bottom: 2px; }
+.farm-cover { padding: 8px 13px; margin-bottom: 10px; border: 1px solid #315b4b; background: #142a25; color: var(--muted); font: 12px/1.45 var(--mono); }
+.farm-cover strong { color: var(--jade); }
 .integrity { display: flex; flex-wrap: wrap; align-items: baseline; gap: 7px 15px; padding: 10px 13px; margin-bottom: 10px; border: 1px solid var(--line); border-left: 3px solid var(--jade); background: var(--panel); color: var(--muted); font: 11px/1.5 var(--mono); }
 .integrity strong, .integrity .farm-kpi { color: var(--jade); }
 .integrity em { color: var(--amber); font-style: normal; }
